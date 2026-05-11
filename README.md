@@ -1,85 +1,43 @@
-# Achroma
+# Monochrome Toggle
 
-A GNOME Shell extension that toggles your display to monochrome/grayscale mode with a single click. 
+[![GNOME Shell 49–50](https://img.shields.io/badge/GNOME%20Shell-49%E2%80%9350-4A86CF?logo=gnome&logoColor=white)](https://www.gnome.org/)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0)
+[![Fork of achroma](https://img.shields.io/badge/fork-achroma-lightgrey)](https://github.com/ktauchathuranga/achroma)
 
-Useful for reducing eye strain, improving focus, or accessibility. 
+A GNOME Shell extension that adds a Quick Settings tile for desaturating and tinting the display.
 
-## Features
-
-- One-click toggle for monochrome display
-- Multiple color profiles to choose from
-- Settings persist between sessions
-- Lightweight and simple
+Useful for reducing eye strain or improving focus.
 
 ## Profiles
 
 | Profile | Description |
-|---------|-------------|
-| Grayscale | Standard full desaturation |
-| Soft | Subtle 70% desaturation |
-| High Contrast | Grayscale with enhanced contrast |
-| Low Brightness | Darker grayscale for night use |
-| Sepia | Warm vintage tone |
+|---|---|
+| Grayscale | Full desaturation |
+| Desaturated | Subtle 70% desaturation |
+| Sepia | Greyscale with a warm tan tint |
 
 ## Installation
 
-### From GNOME Extensions Website
+```bash
+git clone https://github.com/SpiritualRose/monochrome-toggle.git
+cp -r monochrome-toggle ~/.local/share/gnome-shell/extensions/monochrome-toggle@rangol.se
+glib-compile-schemas ~/.local/share/gnome-shell/extensions/monochrome-toggle@rangol.se/schemas/
+```
 
-1. Visit [Achroma on extensions.gnome.org](https://extensions.gnome.org/extension/9061/achroma/)
-2. Click the toggle to install
+Log out and back in (Wayland) or `Alt+F2`, `r`, Enter (X11), then enable:
 
-### Manual Installation
-
-1. Clone or download this repository: 
-   ```bash
-   git clone https://github.com/ktauchathuranga/achroma.git
-   ```
-
-2. Copy to GNOME extensions directory:
-   ```bash
-   cp -r achroma ~/.local/share/gnome-shell/extensions/achroma@ktauchathuranga.github.io
-   ```
-
-3. Compile the schema:
-   ```bash
-   glib-compile-schemas ~/.local/share/gnome-shell/extensions/achroma@ktauchathuranga.github.io/schemas/
-   ```
-
-4. Restart GNOME Shell: 
-   - On Wayland: Log out and log back in
-   - On X11: Press `Alt+F2`, type `r`, press Enter
-
-5. Enable the extension:
-   ```bash
-   gnome-extensions enable achroma@ktauchathuranga.github.io
-   ```
+```bash
+gnome-extensions enable monochrome-toggle@rangol.se
+```
 
 ## Usage
 
-| Action | Result |
-|--------|--------|
-| Left click on icon | Toggle effect on/off |
-| Extension Preferences | Select color profile |
-
-### Opening Preferences
-
-Via command line:
-```bash
-gnome-extensions prefs achroma@ktauchathuranga.github.io
-```
-
-Or via Extension Manager app:  Click the gear icon next to Achroma. 
+Open Quick Settings (top-right corner), tap the **Tint** pill to toggle the effect, or use the arrow to pick a profile.
 
 ## Requirements
 
-- GNOME Shell 50 or later
+GNOME Shell 49 or 50.
 
-### Reloading the extension
+## Credit
 
-```bash
-gnome-extensions disable achroma@ktauchathuranga.github.io && gnome-extensions enable achroma@ktauchathuranga.github.io
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a pull request or open an issue. 
+Forked from [achroma](https://github.com/ktauchathuranga/achroma) by Ashan Chathuranga. This fork moves the indicator to Quick Settings and uses a smaller set of profiles.

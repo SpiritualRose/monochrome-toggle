@@ -58,6 +58,14 @@ function stateUsesBC(s) {
     return BC_STATE_KEYS.some(k => s[k] !== 0);
 }
 
+function createDesatEffect() {
+    return new Clutter.DesaturateEffect({ factor: 0 });
+}
+
+function createBrightnessContrastEffect() {
+    return new Clutter.BrightnessContrastEffect();
+}
+
 const MonochromeToggle = GObject.registerClass(
     class MonochromeToggle extends QuickMenuToggle {
         _init(settings) {
@@ -70,22 +78,11 @@ const MonochromeToggle = GObject.registerClass(
             this._settings = settings;
             this._state = { ...NEUTRAL };
             this._scratch = { ...NEUTRAL };
+            this._desatEffect = null;
+            this._bcEffect = null;
             this._desatAttached = false;
             this._bcAttached = false;
             this._animationId = 0;
-
-            // Effects are attached on demand and removed once we land back at neutral.
-            // A permanently attached OffscreenEffect on Main.uiGroup routes every shell
-            // paint through an FBO chain, which interacts badly with mutter's damage
-            // tracking when other parts of the scene graph animate (e.g. wallpaper
-            // crossfades) — the FBO can hold stale content until a full repaint forces
-            // it to refresh, producing a "phantom desktop" that only updates under the
-            // moving cursor and dragged windows.
-            //
-            // Clutter applies effects in reverse-add order, so the last-added effect is
-            // innermost. DESAT must therefore be added last (in _attachEffects) so BC
-            // tints the desaturated output.
-            this._createEffects();
 
             this.menu.setHeader(ICON_NAME, _('Tint'));
             this._profileSection = new PopupMenu.PopupMenuSection();
@@ -163,11 +160,24 @@ const MonochromeToggle = GObject.registerClass(
         }
 
         _createEffects() {
-            this._desatEffect = new Clutter.DesaturateEffect({ factor: 0 });
-            this._bcEffect = new Clutter.BrightnessContrastEffect();
+            this._desatEffect = createDesatEffect();
+            this._bcEffect = createBrightnessContrastEffect();
+        }
+
+        _clearEffects() {
+            this._desatEffect = null;
+            this._bcEffect = null;
         }
 
         _attachEffects({ bc, desat }) {
+            // Effects are attached on demand and removed once we land back at neutral.
+            // A permanently attached OffscreenEffect on Main.uiGroup routes every shell
+            // paint through an FBO chain, which interacts badly with mutter's damage
+            // tracking when other parts of the scene graph animate (e.g. wallpaper
+            // crossfades) — the FBO can hold stale content until a full repaint forces
+            // it to refresh, producing a "phantom desktop" that only updates under the
+            // moving cursor and dragged windows.
+            //
             // BC first, DESAT second: DESAT (added last) ends up innermost, so BC tints
             // the desaturated output rather than the other way around.
             let changed = false;
@@ -203,6 +213,7 @@ const MonochromeToggle = GObject.registerClass(
 
         _rebuildEffects(state, { forceBC = false, forceDesat = false } = {}) {
             this._detachEffects();
+            this._clearEffects();
             this._createEffects();
             this._applyState(state);
             this._attachEffects({
@@ -266,8 +277,7 @@ const MonochromeToggle = GObject.registerClass(
                 this._profileChangedId = 0;
             }
             this._detachEffects();
-            this._desatEffect = null;
-            this._bcEffect = null;
+            this._clearEffects();
             if (this._profileSection) {
                 this._profileSection.destroy();
                 this._profileSection = null;

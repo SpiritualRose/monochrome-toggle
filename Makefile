@@ -38,7 +38,7 @@ $(LOCALE_DIR)/%/LC_MESSAGES/$(DOMAIN).mo: $(PO_DIR)/%.po
 package zip: schemas translations
 	rm -f $(ZIP)
 	zip -r $(ZIP) extension.js profiles.js metadata.json README.md schemas \
-		-x 'schemas/*.xml~' -x 'schemas/*.bak'
+		-x 'schemas/*.xml~' -x 'schemas/*.bak' -x 'schemas/gschemas.compiled'
 	cd $(BUILD_DIR) && zip -r ../$(ZIP) locale
 
 install: schemas translations

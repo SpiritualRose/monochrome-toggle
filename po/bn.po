@@ -1,0 +1,19 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: monochrome-toggle\n"
+"Language: bn\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Grayscale"
+msgstr "ধূসর স্কেল"
+
+msgid "Desaturated"
+msgstr "কম স্যাচুরেশন"
+
+msgid "Sepia"
+msgstr "সেপিয়া"
+
+msgid "Tint"
+msgstr "রঙের আভা"

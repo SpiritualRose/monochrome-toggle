@@ -1,0 +1,19 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: monochrome-toggle\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Grayscale"
+msgstr "Escala de grises"
+
+msgid "Desaturated"
+msgstr "Desaturado"
+
+msgid "Sepia"
+msgstr "Sepia"
+
+msgid "Tint"
+msgstr "Tinte"

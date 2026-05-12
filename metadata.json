@@ -1,5 +1,6 @@
 {
   "description": "Quick Settings toggle for monochrome display.",
+  "gettext-domain": "monochrome-toggle",
   "name": "Monochrome Toggle",
   "settings-schema": "org.gnome.shell.extensions.monochrome-toggle",
   "shell-version": [

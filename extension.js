@@ -4,14 +4,13 @@ import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 
-import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { QuickMenuToggle, SystemIndicator } from 'resource:///org/gnome/shell/ui/quickSettings.js';
 
 import { DEFAULT_PROFILES } from './profiles.js';
 
-const TITLE = 'Tint';
 const ICON_NAME = 'preferences-color-symbolic';
 const DESAT_NAME = 'monochrome-toggle-desat';
 const BC_NAME = 'monochrome-toggle-bc';
@@ -20,28 +19,12 @@ const DEFAULT_PROFILE_KEY = 'grayscale';
 const TRANSITION_MS = 300;
 const FRAME_MS = 16;
 
-const STATE_KEYS = ['factor', 'br', 'bg', 'bb', 'cr', 'cg', 'cb'];
+const BC_STATE_KEYS = ['br', 'bg', 'bb', 'cr', 'cg', 'cb'];
+const STATE_KEYS = ['factor', ...BC_STATE_KEYS];
 const NEUTRAL = Object.freeze({ factor: 0, br: 0, bg: 0, bb: 0, cr: 0, cg: 0, cb: 0 });
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-
-const TRANSLATIONS = {
-    sv: {
-        'Tint':        'Färgton',
-        'Grayscale':   'Gråskala',
-        'Desaturated': 'Omättad',
-        'Sepia':       'Sepia',
-    },
-};
-
-const LANG = (GLib.get_language_names() || [])
-    .map(l => l.split('.')[0].split('_')[0])
-    .find(lang => TRANSLATIONS[lang]) || null;
-
-function _(str) {
-    return TRANSLATIONS[LANG]?.[str] || str;
-}
 
 function profileToState(profile) {
     const b = profile.brightness || NEUTRAL;
@@ -53,11 +36,32 @@ function profileToState(profile) {
     };
 }
 
+function profileName(profile) {
+    switch (profile.name) {
+    case 'Grayscale':
+        return _('Grayscale');
+    case 'Desaturated':
+        return _('Desaturated');
+    case 'Sepia':
+        return _('Sepia');
+    default:
+        return profile.name;
+    }
+}
+
+function stateUsesDesat(s) {
+    return s.factor !== 0;
+}
+
+function stateUsesBC(s) {
+    return BC_STATE_KEYS.some(k => s[k] !== 0);
+}
+
 const MonochromeToggle = GObject.registerClass(
     class MonochromeToggle extends QuickMenuToggle {
         _init(settings) {
             super._init({
-                title: _(TITLE),
+                title: _('Tint'),
                 iconName: ICON_NAME,
                 toggleMode: true,
             });
@@ -65,17 +69,23 @@ const MonochromeToggle = GObject.registerClass(
             this._settings = settings;
             this._state = { ...NEUTRAL };
             this._scratch = { ...NEUTRAL };
+            this._desatAttached = false;
+            this._bcAttached = false;
 
-            // Clutter applies effects in reverse-add order, so the last-added effect is innermost.
-            // DESAT must be innermost (added last) so BC tints the desaturated output. Both stay
-            // attached for the toggle's lifetime; adding effects on demand can leave mutter's frame
-            // clock idle until something else triggers a redraw.
-            this._desatEffect = new Clutter.DesaturateEffect({ factor: 0 });
-            this._bcEffect = new Clutter.BrightnessContrastEffect();
-            Main.uiGroup.add_effect_with_name(BC_NAME, this._bcEffect);
-            Main.uiGroup.add_effect_with_name(DESAT_NAME, this._desatEffect);
+            // Effects are attached on demand and removed once we land back at neutral.
+            // A permanently attached OffscreenEffect on Main.uiGroup routes every shell
+            // paint through an FBO chain, which interacts badly with mutter's damage
+            // tracking when other parts of the scene graph animate (e.g. wallpaper
+            // crossfades) — the FBO can hold stale content until a full repaint forces
+            // it to refresh, producing a "phantom desktop" that only updates under the
+            // moving cursor and dragged windows.
+            //
+            // Clutter applies effects in reverse-add order, so the last-added effect is
+            // innermost. DESAT must therefore be added last (in _attachEffects) so BC
+            // tints the desaturated output.
+            this._createEffects();
 
-            this.menu.setHeader(ICON_NAME, _(TITLE));
+            this.menu.setHeader(ICON_NAME, _('Tint'));
             this._profileSection = new PopupMenu.PopupMenuSection();
             this.menu.addMenuItem(this._profileSection);
             this._profileItems = {};
@@ -98,7 +108,7 @@ const MonochromeToggle = GObject.registerClass(
         _buildProfileItems() {
             const currentKey = this._settings.get_string(SETTINGS_KEY_PROFILE);
             for (const [key, profile] of Object.entries(DEFAULT_PROFILES)) {
-                const item = new PopupMenu.PopupMenuItem(_(profile.name));
+                const item = new PopupMenu.PopupMenuItem(profileName(profile));
                 if (key === currentKey)
                     item.setOrnament(PopupMenu.Ornament.DOT);
                 item.connect('activate', () => {
@@ -117,7 +127,7 @@ const MonochromeToggle = GObject.registerClass(
         }
 
         _updateSubtitle() {
-            this.subtitle = this.checked ? _(this._getCurrentProfile().name) : null;
+            this.subtitle = this.checked ? profileName(this._getCurrentProfile()) : null;
         }
 
         _getCurrentProfile() {
@@ -137,6 +147,55 @@ const MonochromeToggle = GObject.registerClass(
             this._bcEffect.set_contrast_full(s.cr, s.cg, s.cb);
         }
 
+        _createEffects() {
+            this._desatEffect = new Clutter.DesaturateEffect({ factor: 0 });
+            this._bcEffect = new Clutter.BrightnessContrastEffect();
+        }
+
+        _attachEffects({ bc, desat }) {
+            // BC first, DESAT second: DESAT (added last) ends up innermost, so BC tints
+            // the desaturated output rather than the other way around.
+            let changed = false;
+            if (bc && !this._bcAttached) {
+                Main.uiGroup.add_effect_with_name(BC_NAME, this._bcEffect);
+                this._bcAttached = true;
+                changed = true;
+            }
+            if (desat && !this._desatAttached) {
+                Main.uiGroup.add_effect_with_name(DESAT_NAME, this._desatEffect);
+                this._desatAttached = true;
+                changed = true;
+            }
+            if (changed)
+                Main.uiGroup.queue_redraw();
+        }
+
+        _detachEffects() {
+            let changed = false;
+            if (this._desatAttached) {
+                Main.uiGroup.remove_effect(this._desatEffect);
+                this._desatAttached = false;
+                changed = true;
+            }
+            if (this._bcAttached) {
+                Main.uiGroup.remove_effect(this._bcEffect);
+                this._bcAttached = false;
+                changed = true;
+            }
+            if (changed)
+                Main.uiGroup.queue_redraw();
+        }
+
+        _rebuildEffects(state, { forceBC = false, forceDesat = false } = {}) {
+            this._detachEffects();
+            this._createEffects();
+            this._applyState(state);
+            this._attachEffects({
+                bc: forceBC || stateUsesBC(state),
+                desat: forceDesat || stateUsesDesat(state),
+            });
+        }
+
         _stopAnimation() {
             if (this._animationId) {
                 GLib.source_remove(this._animationId);
@@ -154,6 +213,10 @@ const MonochromeToggle = GObject.registerClass(
             if (STATE_KEYS.every(k => start[k] === end[k])) return;
 
             this._stopAnimation();
+            this._rebuildEffects(start, {
+                forceBC: stateUsesBC(start) || stateUsesBC(end),
+                forceDesat: stateUsesDesat(start) || stateUsesDesat(end),
+            });
 
             const startTime = GLib.get_monotonic_time();
             const durationUs = TRANSITION_MS * 1000;
@@ -170,6 +233,7 @@ const MonochromeToggle = GObject.registerClass(
 
                 if (t >= 1) {
                     this._animationId = 0;
+                    this._rebuildEffects(end);
                     return GLib.SOURCE_REMOVE;
                 }
                 return GLib.SOURCE_CONTINUE;
@@ -182,14 +246,14 @@ const MonochromeToggle = GObject.registerClass(
                 this._settings.disconnect(this._settingsChangedId);
                 this._settingsChangedId = 0;
             }
-            if (this._desatEffect) {
-                Main.uiGroup.remove_effect(this._desatEffect);
-                this._desatEffect = null;
+            this._detachEffects();
+            this._desatEffect = null;
+            this._bcEffect = null;
+            if (this._profileSection) {
+                this._profileSection.destroy();
+                this._profileSection = null;
             }
-            if (this._bcEffect) {
-                Main.uiGroup.remove_effect(this._bcEffect);
-                this._bcEffect = null;
-            }
+            this._profileItems = null;
             super.destroy();
         }
     });

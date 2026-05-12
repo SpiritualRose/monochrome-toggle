@@ -14,6 +14,7 @@ import { DEFAULT_PROFILES } from './profiles.js';
 const ICON_NAME = 'preferences-color-symbolic';
 const DESAT_NAME = 'monochrome-toggle-desat';
 const BC_NAME = 'monochrome-toggle-bc';
+const SETTINGS_KEY_ACTIVE = 'active';
 const SETTINGS_KEY_PROFILE = 'current-profile';
 const DEFAULT_PROFILE_KEY = 'grayscale';
 const TRANSITION_MS = 300;
@@ -71,6 +72,7 @@ const MonochromeToggle = GObject.registerClass(
             this._scratch = { ...NEUTRAL };
             this._desatAttached = false;
             this._bcAttached = false;
+            this._animationId = 0;
 
             // Effects are attached on demand and removed once we land back at neutral.
             // A permanently attached OffscreenEffect on Main.uiGroup routes every shell
@@ -91,7 +93,18 @@ const MonochromeToggle = GObject.registerClass(
             this._profileItems = {};
             this._buildProfileItems();
 
-            this._settingsChangedId = this._settings.connect(
+            this.checked = this._settings.get_boolean(SETTINGS_KEY_ACTIVE);
+            this._rebuildEffects(this._targetState());
+            this._updateSubtitle();
+
+            this._activeChangedId = this._settings.connect(
+                `changed::${SETTINGS_KEY_ACTIVE}`,
+                () => {
+                    const active = this._settings.get_boolean(SETTINGS_KEY_ACTIVE);
+                    if (this.checked !== active)
+                        this.checked = active;
+                });
+            this._profileChangedId = this._settings.connect(
                 `changed::${SETTINGS_KEY_PROFILE}`,
                 () => {
                     this._updateOrnaments();
@@ -100,6 +113,8 @@ const MonochromeToggle = GObject.registerClass(
                 });
 
             this.connect('notify::checked', () => {
+                if (this._settings.get_boolean(SETTINGS_KEY_ACTIVE) !== this.checked)
+                    this._settings.set_boolean(SETTINGS_KEY_ACTIVE, this.checked);
                 this._animateToTarget();
                 this._updateSubtitle();
             });
@@ -242,9 +257,13 @@ const MonochromeToggle = GObject.registerClass(
 
         destroy() {
             this._stopAnimation();
-            if (this._settingsChangedId) {
-                this._settings.disconnect(this._settingsChangedId);
-                this._settingsChangedId = 0;
+            if (this._activeChangedId) {
+                this._settings.disconnect(this._activeChangedId);
+                this._activeChangedId = 0;
+            }
+            if (this._profileChangedId) {
+                this._settings.disconnect(this._profileChangedId);
+                this._profileChangedId = 0;
             }
             this._detachEffects();
             this._desatEffect = null;

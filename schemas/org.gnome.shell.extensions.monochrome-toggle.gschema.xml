@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.monochrome-toggle" path="/org/gnome/shell/extensions/monochrome-toggle/">
+    <key name="active" type="b">
+      <default>false</default>
+      <summary>Tint Active</summary>
+      <description>Whether the tint effect is currently active</description>
+    </key>
     <key name="current-profile" type="s">
       <default>'grayscale'</default>
       <summary>Current Profile</summary>

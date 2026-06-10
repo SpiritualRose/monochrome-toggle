@@ -1,5 +1,6 @@
 # Monochrome Toggle
 
+[![Get it on GNOME Extensions](https://img.shields.io/badge/Get%20it%20on-GNOME%20Extensions-4A86CF?logo=gnome&logoColor=white)](https://extensions.gnome.org/extension/9937/monochrome-toggle/)
 [![GNOME Shell 49–50](https://img.shields.io/badge/GNOME%20Shell-49%E2%80%9350-4A86CF?logo=gnome&logoColor=white)](https://www.gnome.org/)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0)
 [![Fork of achroma](https://img.shields.io/badge/fork-achroma-lightgrey)](https://github.com/ktauchathuranga/achroma)
@@ -18,17 +19,9 @@ Useful for reducing eye strain or improving focus.
 
 ## Installation
 
-```bash
-git clone https://github.com/SpiritualRose/monochrome-toggle.git
-cp -r monochrome-toggle ~/.local/share/gnome-shell/extensions/monochrome-toggle@rangol.se
-glib-compile-schemas ~/.local/share/gnome-shell/extensions/monochrome-toggle@rangol.se/schemas/
-```
+Install from the GNOME Extensions website:
 
-Log out and back in (Wayland) or `Alt+F2`, `r`, Enter (X11), then enable:
-
-```bash
-gnome-extensions enable monochrome-toggle@rangol.se
-```
+**https://extensions.gnome.org/extension/9937/monochrome-toggle/**
 
 ## Usage
 
